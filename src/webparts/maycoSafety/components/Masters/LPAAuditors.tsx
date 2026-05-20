@@ -311,7 +311,7 @@ const LPAAuditors: React.FC<LPAAuditorsProps> = (props) => {
       },
     },
     {
-      headerName: "Audit Level",
+      headerName: "Auditor",
       field: "Title",
       sortable: true,
       filter: "agTextColumnFilter",

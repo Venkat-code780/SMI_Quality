@@ -10,7 +10,7 @@ import { hideLoader, showLoader } from "../Shared/Loader";
 // import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 // import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { highlightCurrentNav } from "../Utilities/HighlightCurrentComponent";
-import { ActionStatus, ControlType } from "../Constants/Contants";
+import {  ControlType } from "../Constants/Contants";
 import formValidation from "../Utilities/FormValidator";
 import { showToast } from "../Shared/Toaster";
 // import { NavLink } from "react-router-dom";
@@ -130,14 +130,35 @@ const LPACategories: React.FC<LPACategoriesProps> = (props) => {
 
             let finalCategories: string[] = [];
 
-            if (lpaItems.length > 0 && lpaItems[0].Categories) {
-                setItemId(lpaItems[0].Id);
+            // if (lpaItems.length > 0 && lpaItems[0].Categories) {
+            //     setItemId(lpaItems[0].Id);
+
+            //     const saved = lpaItems[0].Categories
+            //         ? lpaItems[0].Categories.split("#;&@").filter((c: string) => c)
+            //         : [];
+
+            //     // ✅ DO NOT redeclare
+            //     finalCategories = [...saved];
+
+            //     allCategories.forEach((cat: string) => {
+            //         if (!finalCategories.includes(cat)) {
+            //             finalCategories.push(cat);
+            //         }
+            //     });
+
+            // } else {
+            //     finalCategories = allCategories;
+            //     setItemId(0);
+            // }
+
+            if (lpaItems.length > 0) {
+
+                setItemId(lpaItems[0].ID || lpaItems[0].Id);
 
                 const saved = lpaItems[0].Categories
                     ? lpaItems[0].Categories.split("#;&@").filter((c: string) => c)
                     : [];
 
-                // ✅ DO NOT redeclare
                 finalCategories = [...saved];
 
                 allCategories.forEach((cat: string) => {
@@ -147,8 +168,9 @@ const LPACategories: React.FC<LPACategoriesProps> = (props) => {
                 });
 
             } else {
-                finalCategories = allCategories;
+
                 setItemId(0);
+                finalCategories = allCategories;
             }
 
             const rows = finalCategories.map((cat, index) => ({
@@ -174,49 +196,115 @@ const LPACategories: React.FC<LPACategoriesProps> = (props) => {
     };
   
     // Check duplicate
-    const checkDuplicate = async () => {
-        try {
-            showLoader();
-            const filterQuery = `Title eq '${formData.Plant}'`;
-            const results = await sp.web.lists
-                .getByTitle(listName)
-                .items.filter(itemId > 0 ? `${filterQuery} and Id ne ${itemId}` : filterQuery)();
-            hideLoader();
-            if (results.length > 0) {
-                showToast("error", "Record already exists");
-                return false;
-            }
-            return true;
-        } catch (e) {
-            console.log(e);
-            hideLoader();
-            onError();
-            return false;
-        }
-    };
+    // const checkDuplicate = async () => {
+    //     try {
+    //         showLoader();
+    //         const filterQuery = `Title eq '${formData.Plant}'`;
+    //         const results = await sp.web.lists
+    //             .getByTitle(listName)
+    //             .items.filter(itemId > 0 ? `${filterQuery} and Id ne ${itemId}` : filterQuery)();
+    //         hideLoader();
+    //         if (results.length > 0) {
+    //             showToast("error", "Record already exists");
+    //             return false;
+    //         }
+    //         return true;
+    //     } catch (e) {
+    //         console.log(e);
+    //         hideLoader();
+    //         onError();
+    //         return false;
+    //     }
+    // };
 
     // Insert or update
-    const insertOrUpdate = async () => {
-        try {
-            const data: any = {
-                Plant: formData.Plant.trim(),
-                Department: formData.Department,
-                Categories: formData.Categories
-            };
-            if (itemId > 0) {
-                await sp.web.lists.getByTitle(listName).items.getById(itemId).update(data);
-                // showToast("success", "Auditor Level updated successfully");
-            } else {
-                await sp.web.lists.getByTitle(listName).items.add(data);
-                showToast("success", "Auditor Level submitted successfully");
-            }
+    // const insertOrUpdate = async () => {
+    //     try {
+    //         const data: any = {
+    //             Plant: formData.Plant.trim(),
+    //             Department: formData.Department,
+    //             Categories: formData.Categories
+    //         };
+    //         if (itemId > 0) {
+    //             await sp.web.lists.getByTitle(listName).items.getById(itemId).update(data);
+    //             // showToast("success", "Auditor Level updated successfully");
+    //         } else {
+    //             await sp.web.lists.getByTitle(listName).items.add(data);
+    //             // showToast("success", "Auditor Level submitted successfully");
+    //         }
     
-            onSuccess();
-        } catch (e) {
-            console.log(e);
-            onError();
+    //         onSuccess();
+    //     } catch (e) {
+    //         console.log(e);
+    //         onError();
+    //     }
+    // };
+const insertOrUpdate = async () => {
+    try {
+
+        showLoader();
+
+        const categoriesString =
+            [...categoryRows]
+                .sort((a, b) => a.Order - b.Order)
+                .map(row => row.Category)
+                .join("#;&@") + "#;&@";
+
+        const data: any = {
+            Plant: formData.Plant,
+            Department: formData.Department,
+            Categories: categoriesString
+        };
+
+        console.log("DATA => ", data);
+        console.log("ITEM ID => ", itemId);
+
+        if (itemId && itemId > 0) {
+
+            await sp.web.lists
+                .getByTitle(listName)
+                .items
+                .getById(itemId)
+                .update(data);
+
+            showToast("success", "Updated successfully");
+
+        } else {
+
+            const addResult = await sp.web.lists
+                .getByTitle(listName)
+                .items
+                .add(data);
+
+            console.log("ADD RESULT => ", addResult);
+
+            showToast("success", "Inserted successfully");
         }
-    };
+
+        setCategoryRows([]);
+
+        setItemId(0);
+
+        setFormData({
+            Plant: formData.Plant,
+            Department: "",
+            Categories: ""
+        });
+
+        hideLoader();
+
+    } catch (e: any) {
+
+        console.log("ERROR => ", e);
+        console.log("ERROR MESSAGE => ", e.message);
+        console.log("FULL ERROR => ", JSON.stringify(e));
+
+        hideLoader();
+
+        showToast("error", e.message || "Error while saving");
+    }
+};
+
     //   const handleChangeDropdown = (selectedOption: any, actionMeta: any) => {
     //     if (!actionMeta?.name) return;
 
@@ -285,30 +373,36 @@ const LPACategories: React.FC<LPACategoriesProps> = (props) => {
 
     //     setCategoryRows(updated);
     // };
-    const handleOrderChange = (changedIndex: number, newValue: number) => {
-    const updated = [...categoryRows];
-    const oldValue = updated[changedIndex].Order;
+const handleOrderChange = (changedIndex: number, newValue: number) => {
 
-    const existingIndex = updated.findIndex(
-        (row, i) => row.Order === newValue && i !== changedIndex
+    const updated = [...categoryRows];
+
+    // Find row having selected order
+    const targetIndex = updated.findIndex(
+        (row, index) =>
+            row.Order === newValue && index !== changedIndex
     );
 
-    if (existingIndex !== -1) {
-        const temp = updated[changedIndex].Category;
-        updated[changedIndex].Category = updated[existingIndex].Category;
-        updated[existingIndex].Category = temp;
+    if (targetIndex !== -1) {
+
+        // Swap order values
+        const tempOrder = updated[changedIndex].Order;
+
+        updated[changedIndex].Order = updated[targetIndex].Order;
+        updated[targetIndex].Order = tempOrder;
+
+        // Sort rows by Order
+        updated.sort((a, b) => a.Order - b.Order);
     }
 
-    updated[changedIndex].Order = oldValue;
+    setCategoryRows(updated);
 
-    // ✅ SORT by Order before saving
-    const sorted = [...updated].sort((a, b) => a.Order - b.Order);
-
-    setCategoryRows(sorted);
-
-    // ✅ UPDATE Categories string (🔥 MAIN FIX)
+    // IMPORTANT
     const categoriesString =
-        sorted.map(row => row.Category).join("#;&@") + "#;&@";
+        updated
+            .sort((a, b) => a.Order - b.Order)
+            .map(row => row.Category)
+            .join("#;&@") + "#;&@";
 
     setFormData(prev => ({
         ...prev,
@@ -325,8 +419,8 @@ const LPACategories: React.FC<LPACategoriesProps> = (props) => {
         };
         const isValid = formValidation.FormValidation(data);
         if (isValid.status) {
-            const validDuplicate = await checkDuplicate();
-            if (validDuplicate) insertOrUpdate();
+
+         insertOrUpdate();
         } else {
             showToast("error", isValid.message);
             hideLoader();
@@ -339,21 +433,21 @@ const LPACategories: React.FC<LPACategoriesProps> = (props) => {
         navigate('/Home');
     };
 
-    const onSuccess = () => {
-        showToast("success", "Categories submitted successfully");
-         setFormData({
-        Plant: "Shelby",   // Keep Plant as Shelby
-        Department: "",    // Clear Department
-        Categories: ""     // Clear Categories
-    });
-        setCategoryRows([]);
-        hideLoader();
-    };
+    // const onSuccess = () => {
+    //     showToast("success", "Categories submitted successfully");
+    //      setFormData({
+    //     Plant: "Shelby",   // Keep Plant as Shelby
+    //     Department: "",    // Clear Department
+    //     Categories: ""     // Clear Categories
+    // });
+    //     setCategoryRows([]);
+    //     hideLoader();
+    // };
 
-    const onError = () => {
-        showToast("error", ActionStatus.Error);
-        hideLoader();
-    };
+    // const onError = () => {
+    //     showToast("error", ActionStatus.Error);
+    //     hideLoader();
+    // };
 
     return (
         <div className="container-fluid">
